@@ -7,99 +7,40 @@ import os
 
 app = Flask(__name__)
 
-BURCLAR = [
-    "Mesha (Koc)", "Vrishabha (Boga)", "Mithuna (Ikizler)",
-    "Karka (Yengec)", "Simha (Aslan)", "Kanya (Basak)",
-    "Tula (Terazi)", "Vrishchika (Akrep)", "Dhanus (Yay)",
-    "Makara (Oglak)", "Kumbha (Kova)", "Meena (Balik)"
-]
-
+# --- SÖZLÜKLER VE VERİLER ---
+BURCLAR = ["Mesha (Koc)", "Vrishabha (Boga)", "Mithuna (Ikizler)", "Karka (Yengec)", "Simha (Aslan)", "Kanya (Basak)", "Tula (Terazi)", "Vrishchika (Akrep)", "Dhanus (Yay)", "Makara (Oglak)", "Kumbha (Kova)", "Meena (Balik)"]
 BURC_KISA = ["Ar","Ta","Ge","Cn","Le","Vi","Li","Sc","Sg","Cp","Aq","Pi"]
+GEZEGEN_LISTESI = [(swe.SUN, "Gunes", "Su"), (swe.MOON, "Ay", "Mo"), (swe.MARS, "Mars", "Ma"), (swe.MERCURY, "Merkur", "Me"), (swe.JUPITER, "Jupiter", "Ju"), (swe.VENUS, "Venus", "Ve"), (swe.SATURN, "Saturn", "Sa"), (swe.TRUE_NODE, "Rahu", "Ra")]
+NAKSHATRALAR = [("Ashwini","Ke"),("Bharani","Ve"),("Krittika","Su"),("Rohini","Mo"),("Mrigashira","Ma"),("Ardra","Ra"),("Punarvasu","Ju"),("Pushya","Sa"),("Ashlesha","Me"),("Magha","Ke"),("Purva Phalguni","Ve"),("Uttara Phalguni","Su"),("Hasta","Mo"),("Chitra","Ma"),("Swati","Ra"),("Vishakha","Ju"),("Anuradha","Sa"),("Jyeshtha","Me"),("Mula","Ke"),("Purva Ashadha","Ve"),("Uttara Ashadha","Su"),("Shravana","Mo"),("Dhanishtha","Ma"),("Shatabhisha","Ra"),("Purva Bhadrapada","Ju"),("Uttara Bhadrapada","Sa"),("Revati","Me")]
+DASHA_SIRASI = [("Ketu","Ke",7),("Shukra","Ve",20),("Surya","Su",6),("Chandra","Mo",10),("Mangala","Ma",7),("Rahu","Ra",18),("Guru","Ju",16),("Shani","Sa",19),("Budha","Me",17)]
+LAGNA_SAHIPLERI = {0:"Ma",1:"Ve",2:"Me",3:"Mo",4:"Su",5:"Me",6:"Ve",7:"Ma",8:"Ju",9:"Sa",10:"Sa",11:"Ju"}
+GEZ_ADI = {"Su":"Gunes","Mo":"Ay","Ma":"Mars","Me":"Merkur","Ju":"Jupiter","Ve":"Venus","Sa":"Saturn","Ra":"Rahu","Ke":"Ketu"}
+GUCLER = {"Su":{"uchcha":0,"neecha":6,"own":[4]},"Mo":{"uchcha":1,"neecha":7,"own":[3]},"Ma":{"uchcha":9,"neecha":3,"own":[0,7]},"Me":{"uchcha":5,"neecha":11,"own":[2,5]},"Ju":{"uchcha":3,"neecha":9,"own":[8,11]},"Ve":{"uchcha":11,"neecha":5,"own":[1,6]},"Sa":{"uchcha":6,"neecha":0,"own":[9,10]},"Ra":{"uchcha":1,"neecha":7,"own":[]},"Ke":{"uchcha":7,"neecha":1,"own":[]}}
 
-GEZEGEN_LISTESI = [
-    (swe.SUN,       "Gunes",   "Su"),
-    (swe.MOON,      "Ay",      "Mo"),
-    (swe.MARS,      "Mars",    "Ma"),
-    (swe.MERCURY,   "Merkur",  "Me"),
-    (swe.JUPITER,   "Jupiter", "Ju"),
-    (swe.VENUS,     "Venus",   "Ve"),
-    (swe.SATURN,    "Saturn",  "Sa"),
-    (swe.TRUE_NODE, "Rahu",    "Ra"),
-]
-
-NAKSHATRALAR = [
-    ("Ashwini","Ke"),("Bharani","Ve"),("Krittika","Su"),
-    ("Rohini","Mo"),("Mrigashira","Ma"),("Ardra","Ra"),
-    ("Punarvasu","Ju"),("Pushya","Sa"),("Ashlesha","Me"),
-    ("Magha","Ke"),("Purva Phalguni","Ve"),("Uttara Phalguni","Su"),
-    ("Hasta","Mo"),("Chitra","Ma"),("Swati","Ra"),
-    ("Vishakha","Ju"),("Anuradha","Sa"),("Jyeshtha","Me"),
-    ("Mula","Ke"),("Purva Ashadha","Ve"),("Uttara Ashadha","Su"),
-    ("Shravana","Mo"),("Dhanishtha","Ma"),("Shatabhisha","Ra"),
-    ("Purva Bhadrapada","Ju"),("Uttara Bhadrapada","Sa"),("Revati","Me"),
-]
-
-DASHA_SIRASI = [
-    ("Ketu","Ke",7),("Shukra","Ve",20),("Surya","Su",6),
-    ("Chandra","Mo",10),("Mangala","Ma",7),("Rahu","Ra",18),
-    ("Guru","Ju",16),("Shani","Sa",19),("Budha","Me",17),
-]
-
-LAGNA_SAHIPLERI = {
-    0:"Ma",1:"Ve",2:"Me",3:"Mo",4:"Su",5:"Me",
-    6:"Ve",7:"Ma",8:"Ju",9:"Sa",10:"Sa",11:"Ju"
-}
-
-GEZ_ADI = {
-    "Su":"Gunes","Mo":"Ay","Ma":"Mars","Me":"Merkur",
-    "Ju":"Jupiter","Ve":"Venus","Sa":"Saturn","Ra":"Rahu","Ke":"Ketu"
-}
-
-GUCLER = {
-    "Su":{"uchcha":0,"neecha":6,"own":[4]},
-    "Mo":{"uchcha":1,"neecha":7,"own":[3]},
-    "Ma":{"uchcha":9,"neecha":3,"own":[0,7]},
-    "Me":{"uchcha":5,"neecha":11,"own":[2,5]},
-    "Ju":{"uchcha":3,"neecha":9,"own":[8,11]},
-    "Ve":{"uchcha":11,"neecha":5,"own":[1,6]},
-    "Sa":{"uchcha":6,"neecha":0,"own":[9,10]},
-    "Ra":{"uchcha":1,"neecha":7,"own":[]},
-    "Ke":{"uchcha":7,"neecha":1,"own":[]},
-}
-
+# --- YARDIMCI FONKSİYONLAR ---
 def koordinat_al(sehir):
-    geolocator = Nominatim(user_agent="vedik_astro_v2", timeout=10)
+    geolocator = Nominatim(user_agent="vedik_astro_test", timeout=10)
     location = geolocator.geocode(sehir)
-    if not location:
-        raise ValueError("Sehir bulunamadi: " + sehir)
+    if not location: raise ValueError("Sehir bulunamadi: " + sehir)
     return location.latitude, location.longitude
 
 def julian_gun(tarih_str, saat_str, utc_offset):
     dt = datetime.strptime(tarih_str + " " + saat_str, "%Y-%m-%d %H:%M")
     utc_dt = dt - timedelta(hours=utc_offset)
-    return swe.julday(utc_dt.year, utc_dt.month, utc_dt.day,
-                      utc_dt.hour + utc_dt.minute / 60.0)
+    return swe.julday(utc_dt.year, utc_dt.month, utc_dt.day, utc_dt.hour + utc_dt.minute / 60.0)
 
 def derece_fmt(ekl):
     ekl = ekl % 360
-    d = int(ekl % 30)
-    m = int(((ekl % 30) - d) * 60)
-    s = int((((ekl % 30) - d) * 60 - m) * 60)
-    return str(d) + "d " + str(m).zfill(2) + "' " + str(s).zfill(2) + '"'
+    d, m = int(ekl % 30), int(((ekl % 30) - int(ekl % 30)) * 60)
+    s = int(((((ekl % 30) - d) * 60 - m) * 60))
+    return f"{d}d {m:02d}' {s:02d}\""
 
 def burc_bilgi(ekl):
-    ekl = ekl % 360
-    no = int(ekl / 30)
-    return {
-        "no": no,
-        "ad": BURCLAR[no],
-        "kisa": BURC_KISA[no],
-        "derece": derece_fmt(ekl),
-        "tam": round(ekl, 4)
-    }
+    no = int((ekl % 360) / 30)
+    return {"no": no, "ad": BURCLAR[no], "kisa": BURC_KISA[no], "derece": derece_fmt(ekl), "tam": round(ekl, 4)}
 
 def nak_bilgi(ekl):
-    ekl = ekl % 360
+    ekl %= 360
     no = min(int(ekl / (360.0/27)), 26)
     pada = int((ekl % (360.0/27)) / (360.0/27/4)) + 1
     ad, sahip = NAKSHATRALAR[no]
@@ -116,269 +57,69 @@ def hesapla(tarih, saat, sehir, utc_offset=3):
     lat, lon = koordinat_al(sehir)
     jd = julian_gun(tarih, saat, utc_offset)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
-
     _, ascmc = swe.houses(jd, lat, lon, b'W')
     ayan = swe.get_ayanamsa_ut(jd)
     lagna_ekl = (ascmc[0] - ayan) % 360
     lagna = burc_bilgi(lagna_ekl)
-
     gezegenler = {}
-    ay_ekl = None
-
+    ay_ekl = 0
     for gez_id, ad, kisa in GEZEGEN_LISTESI:
         pos, hiz = swe.calc_ut(jd, gez_id, swe.FLG_SIDEREAL)
         ekl = pos[0] % 360
-        b = burc_bilgi(ekl)
-        ev = int(((ekl - lagna_ekl) % 360) / 30) + 1
-        nak = nak_bilgi(ekl)
-        retrograd = bool(hiz[3] < 0) if len(hiz) > 3 else False
-        gezegenler[kisa] = {
-            "ad": ad,
-            "burc": b["ad"],
-            "burc_kisa": b["kisa"],
-            "burc_no": b["no"],
-            "derece": b["derece"],
-            "tam": b["tam"],
-            "ev": ev,
-            "nakshatra": nak["ad"],
-            "pada": nak["pada"],
-            "nakshatra_sahip": nak["sahip"],
-            "guc": guc_str(kisa, b["no"]),
-            "retrograd": retrograd
-        }
-        if kisa == "Mo":
-            ay_ekl = ekl
-
+        b, nak = burc_bilgi(ekl), nak_bilgi(ekl)
+        gezegenler[kisa] = {"ad": ad, "burc": b["ad"], "burc_kisa": b["kisa"], "burc_no": b["no"], "derece": b["derece"], "tam": b["tam"], "ev": int(((ekl - lagna_ekl) % 360) / 30) + 1, "nakshatra": nak["ad"], "pada": nak["pada"], "nakshatra_sahip": nak["sahip"], "guc": guc_str(kisa, b["no"]), "retrograd": bool(hiz[3] < 0)}
+        if kisa == "Mo": ay_ekl = ekl
     rahu_ekl = gezegenler["Ra"]["tam"]
     ketu_ekl = (rahu_ekl + 180) % 360
-    kb = burc_bilgi(ketu_ekl)
-    knak = nak_bilgi(ketu_ekl)
-    gezegenler["Ke"] = {
-        "ad": "Ketu",
-        "burc": kb["ad"],
-        "burc_kisa": kb["kisa"],
-        "burc_no": kb["no"],
-        "derece": kb["derece"],
-        "tam": kb["tam"],
-        "ev": int(((ketu_ekl - lagna_ekl) % 360) / 30) + 1,
-        "nakshatra": knak["ad"],
-        "pada": knak["pada"],
-        "nakshatra_sahip": knak["sahip"],
-        "guc": guc_str("Ke", kb["no"]),
-        "retrograd": False
-    }
-
-    evler = []
-    for i in range(12):
-        burc_no = (lagna["no"] + i) % 12
-        sah = LAGNA_SAHIPLERI.get(burc_no, "?")
-        evler.append({
-            "ev": i + 1,
-            "burc": BURCLAR[burc_no],
-            "burc_kisa": BURC_KISA[burc_no],
-            "sahip": GEZ_ADI.get(sah, "?"),
-            "sahip_kisa": sah
-        })
-
+    kb, knak = burc_bilgi(ketu_ekl), nak_bilgi(ketu_ekl)
+    gezegenler["Ke"] = {"ad": "Ketu", "burc": kb["ad"], "burc_kisa": kb["kisa"], "burc_no": kb["no"], "derece": kb["derece"], "tam": kb["tam"], "ev": int(((ketu_ekl - lagna_ekl) % 360) / 30) + 1, "nakshatra": knak["ad"], "pada": knak["pada"], "nakshatra_sahip": knak["sahip"], "guc": guc_str("Ke", kb["no"]), "retrograd": False}
+    evler = [{"ev": i + 1, "burc": BURCLAR[(lagna["no"] + i) % 12], "burc_kisa": BURC_KISA[(lagna["no"] + i) % 12], "sahip": GEZ_ADI.get(LAGNA_SAHIPLERI.get((lagna["no"] + i) % 12), "?"), "sahip_kisa": LAGNA_SAHIPLERI.get((lagna["no"] + i) % 12)} for i in range(12)]
     ay_nak = nak_bilgi(ay_ekl)
-    nak_no = ay_nak["no"]
-    nak_sahip = ay_nak["sahip"]
-    dasha_idx = next(i for i, (_, k, _) in enumerate(DASHA_SIRASI) if k == nak_sahip)
-    nak_boyut = 360.0 / 27
-    ilerleme = (ay_ekl % 360 - nak_no * nak_boyut) / nak_boyut
-    _, _, ilk_sure = DASHA_SIRASI[dasha_idx]
+    dasha_idx = next(i for i, (_, k, _) in enumerate(DASHA_SIRASI) if k == ay_nak["sahip"])
+    ilerleme = (ay_ekl % (360.0/27)) / (360.0/27)
+    ilk_sure = DASHA_SIRASI[dasha_idx][2]
     kalan = ilk_sure * (1 - ilerleme)
-
     dt = datetime.strptime(tarih, "%Y-%m-%d")
-    bas = dt - timedelta(days=ilk_sure * 365.25 * ilerleme)
+    bas = dt - timedelta(days=(ilk_sure - kalan) * 365.25)
     zincir = []
     for i in range(9):
-        idx = (dasha_idx + i) % 9
-        ad, kisa, sure = DASHA_SIRASI[idx]
+        ad, kisa, sure = DASHA_SIRASI[(dasha_idx + i) % 9]
         gercek = kalan if i == 0 else sure
         bit = bas + timedelta(days=gercek * 365.25)
-        zincir.append({
-            "dasha": ad,
-            "kisa": kisa,
-            "sure": round(gercek, 2),
-            "baslangic": bas.strftime("%d.%m.%Y"),
-            "bitis": bit.strftime("%d.%m.%Y")
-        })
+        zincir.append({"dasha": ad, "kisa": kisa, "sure": round(gercek, 2), "baslangic": bas.strftime("%d.%m.%Y"), "bitis": bit.strftime("%d.%m.%Y")})
         bas = bit
-
-    bugun = datetime.now()
-    suanki = zincir[-1]
-    for z in zincir:
-        try:
-            zb = datetime.strptime(z["baslangic"], "%d.%m.%Y")
-            ze = datetime.strptime(z["bitis"], "%d.%m.%Y")
-            if zb <= bugun <= ze:
-                suanki = z
-                break
-        except Exception:
-            pass
-
-    dasha = {
-        "suanki": suanki["dasha"],
-        "baslangic": suanki["baslangic"],
-        "bitis": suanki["bitis"],
-        "zincir": zincir
-    }
-
-    yogalar = []
-    ay_ev = gezegenler["Mo"]["ev"]
-    ju_ev = gezegenler["Ju"]["ev"]
-    if ju_ev in [(ay_ev + k - 1) % 12 + 1 for k in [1, 4, 7, 10]]:
-        yogalar.append("Gaja Kesari Yoga - Jupiter Ay'dan kendra evde")
-    if gezegenler["Su"]["burc_no"] == gezegenler["Me"]["burc_no"]:
-        yogalar.append("Budha-Aditya Yoga - Gunes + Merkur kavusum")
-    ay_b = gezegenler["Mo"]["burc_no"]
-    ma_b = gezegenler["Ma"]["burc_no"]
-    if ay_b == ma_b or abs(ay_b - ma_b) == 6:
-        yogalar.append("Chandra-Mangala Yoga - Ay ve Mars iliskili")
-    lsah = LAGNA_SAHIPLERI.get(lagna["no"], "")
-    if gezegenler.get(lsah, {}).get("ev") == 1:
-        yogalar.append("Lagnadhipati Yoga - Lagna sahibi 1. evde")
-
-    return {
-        "lagna": lagna,
-        "gezegenler": gezegenler,
-        "evler": evler,
-        "ay_nakshatra": ay_nak,
-        "dasha": dasha,
-        "yogalar": yogalar,
-        "koordinat": {"lat": round(lat, 4), "lon": round(lon, 4)},
-        "ayanamsha": round(ayan, 6)
-    }
+    return {"lagna": lagna, "gezegenler": gezegenler, "evler": evler, "ay_nakshatra": ay_nak, "dasha": {"suanki": next((z for z in zincir if datetime.strptime(z["baslangic"], "%d.%m.%Y") <= datetime.now() <= datetime.strptime(z["bitis"], "%d.%m.%Y")), zincir[-1]), "zincir": zincir}, "yogalar": [], "koordinat": {"lat": round(lat, 4), "lon": round(lon, 4)}, "ayanamsha": round(ayan, 6)}
 
 def liste_olustur(veri, girdi):
-    tarih = girdi["tarih"]
-    saat = girdi["saat"]
-    sehir = girdi["sehir"]
-    l = veri["lagna"]
-    g = veri["gezegenler"]
-    d = veri["dasha"]
-    nak = veri["ay_nakshatra"]
-    satirlar = []
-
-    satirlar.append("=" * 72)
-    satirlar.append("  VEDIK DOGUM HARITASI")
-    satirlar.append("=" * 72)
-    satirlar.append("  Tarih     : " + tarih + "   Saat : " + saat)
-    satirlar.append("  Yer       : " + sehir)
-    satirlar.append("  Koordinat : " + str(veri["koordinat"]["lat"]) + "N  " + str(veri["koordinat"]["lon"]) + "E")
-    satirlar.append("  Ayanamsha : Lahiri  " + str(veri["ayanamsha"]))
-    satirlar.append("  Ev Sistemi: Whole Sign")
-    satirlar.append("=" * 72)
-
-    lnak = nak_bilgi(l["tam"])
-    satirlar.append("")
-    satirlar.append("  LAGNA  :  " + l["ad"] + "   " + l["derece"])
-    satirlar.append("            Nakshatra: " + lnak["ad"])
-
-    satirlar.append("")
+    l, g, d = veri["lagna"], veri["gezegenler"], veri["dasha"]
+    satirlar = ["="*72, "  VEDIK DOGUM HARITASI", "="*72, f"  Tarih: {girdi['tarih']}  Saat: {girdi['saat']}  Yer: {girdi['sehir']}", "="*72]
+    satirlar.append(f"\n  LAGNA: {l['ad']} {l['derece']}\n")
+    satirlar.append(f"  {'Gezegen':<10} {'Burc':<15} {'Derece':<12} {'Ev':<4} {'Nakshatra':<15} {'Guc':<10}")
     satirlar.append("-" * 72)
-    satirlar.append("  GEZEGENLER")
-    satirlar.append("-" * 72)
-    baslik = "  {:<10} {:<20} {:<14} {:<4} {:<22} {:<3} {:<12} {}".format(
-        "Gezegen","Burc","Derece","Ev","Nakshatra","Pd","Guc","Ret"
-    )
-    satirlar.append(baslik)
-    satirlar.append("-" * 72)
-
     for k in ["Su","Mo","Ma","Me","Ju","Ve","Sa","Ra","Ke"]:
-        gz = g.get(k)
-        if not gz:
-            continue
-        r = "(R)" if gz["retrograd"] else "   "
-        satirlar.append("  {:<10} {:<20} {:<14} {:<4} {:<22} {:<3} {:<12} {}".format(
-            gz["ad"], gz["burc"], gz["derece"],
-            gz["ev"], gz["nakshatra"], gz["pada"],
-            gz["guc"], r
-        ))
-
-    satirlar.append("")
-    satirlar.append("-" * 72)
-    satirlar.append("  EVLER (Whole Sign)")
-    satirlar.append("-" * 72)
-    satirlar.append("  {:<5} {:<22} {:<14} {}".format("Ev","Burc","Sahip","Gezegen(ler)"))
-    satirlar.append("-" * 72)
-
-    for ev in veri["evler"]:
-        evdekiler = []
-        for k in ["Su","Mo","Ma","Me","Ju","Ve","Sa","Ra","Ke"]:
-            if g.get(k, {}).get("ev") == ev["ev"]:
-                evdekiler.append(g[k]["ad"])
-        evdeki_str = ", ".join(evdekiler) if evdekiler else "-"
-        satirlar.append("  {:<5} {:<22} {:<14} {}".format(
-            ev["ev"], ev["burc"], ev["sahip"], evdeki_str
-        ))
-
-    satirlar.append("")
-    satirlar.append("-" * 72)
-    satirlar.append("  VIMSHOTTARI DASHA")
-    satirlar.append("-" * 72)
-    satirlar.append("  Ay Nakshatra : " + nak["ad"] + "  Pada " + str(nak["pada"]) + "  (Sahip: " + GEZ_ADI.get(nak["sahip"], "?") + ")")
-    satirlar.append("  Su an        : " + d["suanki"] + " Mahadasha")
-    satirlar.append("               : " + d["baslangic"] + " --> " + d["bitis"])
-    satirlar.append("")
-    satirlar.append("  {:<14} {:<10} {:<14} {}".format("Donem","Sure","Baslangic","Bitis"))
-    satirlar.append("  " + "-" * 50)
-    for z in d["zincir"]:
-        isaret = "  << SU AN" if z["dasha"] == d["suanki"] else ""
-        satirlar.append("  {:<14} {:<10} {:<14} {}{}".format(
-            z["dasha"], str(z["sure"]) + " yil",
-            z["baslangic"], z["bitis"], isaret
-        ))
-
-    if veri["yogalar"]:
-        satirlar.append("")
-        satirlar.append("-" * 72)
-        satirlar.append("  YOGALAR")
-        satirlar.append("-" * 72)
-        for y in veri["yogalar"]:
-            satirlar.append("  * " + y)
-
-    satirlar.append("")
-    satirlar.append("=" * 72)
+        gz = g[k]
+        satirlar.append(f"  {gz['ad']:<10} {gz['burc']:<15} {gz['derece']:<12} {gz['ev']:<4} {gz['nakshatra']:<15} {gz['guc']:<10}")
     return "\n".join(satirlar)
 
-
-@app.route("/saglik", methods=["GET"])
-def saglik():
-    return jsonify({"durum": "aktif", "versiyon": "2.1"})
-
-@app.route("/debug", methods=["GET"])
-def debug():
-    try:
-        swe.set_sid_mode(swe.SIDM_LAHIRI)
-        return jsonify({"swe": "ok", "geopy": "ok"})
-    except Exception as e:
-        return jsonify({"hata": str(e)}), 500
+# --- FLASK YOLLARI ---
+@app.route("/saglik")
+def saglik(): return jsonify({"durum": "aktif"})
 
 @app.route("/harita", methods=["POST"])
 def harita_json():
     try:
         data = request.get_json()
-        if not data:
-             return jsonify({"hata": "JSON verisi eksik"}), 400
-        veri = hesapla(data["tarih"], data["saat"], data["sehir"], data.get("utc_offset", 3))
-        return jsonify({"durum": "basarili", "girdi": data, **veri})
-    except Exception as e:
-        return jsonify({"hata": str(e), "detay": traceback.format_exc()}), 500
+        if not data: return jsonify({"hata": "Veri yok"}), 400
+        return jsonify(hesapla(data["tarih"], data["saat"], data["sehir"], data.get("utc_offset", 3)))
+    except Exception as e: return jsonify({"hata": str(e)}), 500
 
 @app.route("/harita/liste", methods=["POST"])
 def harita_liste():
     try:
         data = request.get_json()
-        if not data:
-            return "HATA: JSON verisi eksik", 400
         veri = hesapla(data["tarih"], data["saat"], data["sehir"], data.get("utc_offset", 3))
-        liste = liste_olustur(veri, data)
-        return liste, 200, {"Content-Type": "text/plain; charset=utf-8"}
-    except Exception as e:
-        return "HATA: " + str(e) + "\n\n" + traceback.format_exc(), 500
+        return liste_olustur(veri, data), 200, {"Content-Type": "text/plain; charset=utf-8"}
+    except Exception as e: return str(e), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
