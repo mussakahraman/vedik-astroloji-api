@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 import swisseph as swe
 from datetime import datetime, timedelta
@@ -83,8 +84,7 @@ def harita_liste():
         veri = hesapla(data["tarih"], data["saat"], data["sehir"], data.get("utc_offset", 3))
         return liste_olustur(veri, data), 200, {"Content-Type": "text/plain; charset=utf-8"}
     except Exception as e: return f"Hata: {str(e)}", 500
-
 if __name__ == "__main__":
-    # Railway'in verdigi portu zorunlu kılıyoruz
+    # Railway'in atadığı portu alıyoruz, bulamazsa 8080 kullanıyoruz
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)
