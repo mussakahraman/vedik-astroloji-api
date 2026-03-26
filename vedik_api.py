@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 
-# --- SABİT VERİLER ---
+# --- TEKNİK SABİTLER ---
 BURC_KISA = ["Ar", "Ta", "Ge", "Cn", "Le", "Vi", "Li", "Sc", "Sg", "Cp", "Aq", "Pi"]
 NAK_LISTE = ["Ashw", "Bhar", "Krit", "Rohi", "Mrig", "Ardr", "Puna", "Push", "Ashl", "Magh", "P_Ph", "U_Ph", "Hast", "Chit", "Swat", "Vish", "Anur", "Jyes", "Mula", "P_As", "U_As", "Shra", "Dhan", "Shat", "P_Bh", "U_Bh", "Reva"]
 KARAKA_SIRALAMASI = ["AK", "AmK", "BK", "MK", "PK", "GK", "DK"]
@@ -22,30 +22,40 @@ def nak_detay(ekl):
     pada = int((ekl % (360/27)) / (360/108)) + 1
     return NAK_LISTE[min(n_no, 26)], pada
 
+@app.route("/")
+def ana(): return "API Calisiyor"
+
 @app.route("/saglik")
-def saglik(): return "Sistem Aktif"
+def saglik(): return "OK"
 
 @app.route("/harita/liste", methods=["POST"])
 def harita_liste():
     try:
-        data = request.get_json(force=True)
-        # Format: "09.04.1993" ve "12:30"
-        t_str, s_str = data["tarih"], data["saat"]
+        # JSON verisini en güvenli şekilde al
+        data = request.get_json(silent=True) or {}
+        t_str = data.get("tarih", "09.04.1993")
+        s_str = data.get("saat", "12:30")
         utc = float(data.get("utc_offset", 3))
-        
-        # Parçalara ayır (Nokta veya Tire fark etmez)
-        t_p = t_str.replace('.', '-').split('-')
-        s_p = s_str.replace('.', ':').split(':')
-        
-        d, m, y = int(t_p[0]), int(t_p[1]), int(t_p[2])
-        saat, dak = int(s_p[0]), int(s_p[1])
+        sehir = data.get("sehir", "OSMANIYE")
 
-        # Julian Day & Lahiri
-        jd = swe.julday(y, m, d, (saat + dak/60.0) - utc)
+        # Tarih ve Saat okuma (En esnek yöntem)
+        # 09.04.1993 veya 1993-04-09 gibi formatları dener
+        try:
+            from dateutil import parser
+            dt = parser.parse(f"{t_str} {s_str}")
+        except:
+            # Dateutil yoksa manuel (GG.AA.YYYY formatı için)
+            d, m, y = map(int, t_str.replace('-', '.').split('.'))
+            sa, dk = map(int, s_str.replace('.', ':').split(':'))
+            from datetime import datetime
+            dt = datetime(y, m, d, sa, dk)
+
+        # Julian Day & Lahiri Ayanamsa
+        jd = swe.julday(dt.year, dt.month, dt.day, (dt.hour + dt.minute/60.0) - utc)
         swe.set_sid_mode(swe.SIDM_LAHIRI)
         ayan = swe.get_ayanamsa_ut(jd)
         
-        # Osmaniye Koordinat
+        # Osmaniye Koordinat (Sabit)
         lat, lon = 37.07, 36.24
         _, ascmc = swe.houses(jd, lat, lon, b'W')
         l_ekl = (ascmc[0] - ayan) % 360
@@ -59,13 +69,13 @@ def harita_liste():
             ekl = pos[0] % 360
             gez_list.append({"ad": ad, "ekl": ekl, "deg_in_sign": ekl % 30, "retro": " (R)" if hiz[3] < 0 else ""})
 
-        # Karaka
+        # Chara Karaka sıralaması
         sirali = sorted(gez_list, key=lambda x: x['deg_in_sign'], reverse=True)
         k_map = {sirali[i]['ad']: KARAKA_SIRALAMASI[i] for i in range(len(KARAKA_SIRALAMASI))}
 
-        # Tablo
+        # Tablo Oluşturma
         h = f"{'Body':<15} {'Deg':<8} {'Nak':<10} {'P':<3} {'Rasi':<5} {'Navam':<5}"
-        out = [f"VEDIK HARITA: {data.get('sehir','').upper()}", "="*50, h, "-"*50]
+        out = [f"VEDIK HARITA: {sehir.upper()}", "="*55, h, "-"*55]
         
         # Lagna
         nk, pd = nak_detay(l_ekl)
@@ -74,10 +84,10 @@ def harita_liste():
         for g in gez_list:
             nk, pd = nak_detay(g['ekl'])
             tag = k_map.get(g['ad'], "")
-            nm = f"{g['ad']}{g['retro']} - {tag}" if tag else g['ad']
-            out.append(f"{nm:<15} {int(g['ekl']%30):02}°{int((g['ekl']%1)*60):02}' {nk:<10} {pd:<3} {BURC_KISA[int(g['ekl']/30)]:<5} {navamsa_hesapla(g['ekl']):<5}")
+            full_name = f"{g['ad']}{g['retro']} - {tag}" if tag else g['ad']
+            out.append(f"{full_name:<15} {int(g['ekl']%30):02}°{int((g['ekl']%1)*60):02}' {nk:<10} {pd:<3} {BURC_KISA[int(g['ekl']/30)]:<5} {navamsa_hesapla(g['ekl']):<5}")
 
-        # Rahu/Ketu
+        # Rahu & Ketu
         r_ekl = swe.calc_ut(jd, swe.TRUE_NODE, swe.FLG_SIDEREAL)[0][0] % 360
         for ad, e in [("Rahu", r_ekl), ("Ketu", (r_ekl+180)%360)]:
             nk, pd = nak_detay(e)
@@ -85,8 +95,8 @@ def harita_liste():
 
         return "\n".join(out), 200, {"Content-Type": "text/plain; charset=utf-8"}
 
-    except Exception:
-        return traceback.format_exc(), 500
+    except Exception as e:
+        return f"Hata Detayi: {str(e)}\n{traceback.format_exc()}", 200 # 500 yerine 200 döner ki hatayı görebilelim
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
