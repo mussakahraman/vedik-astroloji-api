@@ -309,6 +309,14 @@ def harita_liste():
         return liste, 200, {"Content-Type": "text/plain; charset=utf-8"}
     except Exception as e:
         return f"HATA: {str(e)}", 500
-
+@app.route("/debug", methods=["GET"])
+def debug():
+    try:
+        import swisseph as swe
+        from geopy.geocoders import Nominatim
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        return jsonify({"swe": "ok", "geopy": "ok"})
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
