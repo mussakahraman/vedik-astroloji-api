@@ -25,57 +25,47 @@ def nak_detay(ekl):
 @app.route("/")
 def ana(): return "API Calisiyor"
 
-@app.route("/saglik")
-def saglik(): return "OK"
-
 @app.route("/harita/liste", methods=["POST"])
 def harita_liste():
     try:
-        # JSON verisini en güvenli şekilde al
         data = request.get_json(silent=True) or {}
         t_str = data.get("tarih", "09.04.1993")
         s_str = data.get("saat", "12:30")
         utc = float(data.get("utc_offset", 3))
-        sehir = data.get("sehir", "OSMANIYE")
-
-        # Tarih ve Saat okuma (En esnek yöntem)
-        # 09.04.1993 veya 1993-04-09 gibi formatları dener
-        try:
-            from dateutil import parser
-            dt = parser.parse(f"{t_str} {s_str}")
-        except:
-            # Dateutil yoksa manuel (GG.AA.YYYY formatı için)
-            d, m, y = map(int, t_str.replace('-', '.').split('.'))
-            sa, dk = map(int, s_str.replace('.', ':').split(':'))
-            from datetime import datetime
-            dt = datetime(y, m, d, sa, dk)
-
-        # Julian Day & Lahiri Ayanamsa
-        jd = swe.julday(dt.year, dt.month, dt.day, (dt.hour + dt.minute/60.0) - utc)
+        
+        # Tarih Ayrıştırma
+        d, m, y = map(int, t_str.replace('-', '.').split('.'))
+        sa, dk = map(int, s_str.replace('-', ':').split(':'))
+        
+        # Julian Day
+        jd = swe.julday(y, m, d, (sa + dk/60.0) - utc)
         swe.set_sid_mode(swe.SIDM_LAHIRI)
         ayan = swe.get_ayanamsa_ut(jd)
         
-        # Osmaniye Koordinat (Sabit)
+        # Lagna (Osmaniye Koordinat)
         lat, lon = 37.07, 36.24
         _, ascmc = swe.houses(jd, lat, lon, b'W')
         l_ekl = (ascmc[0] - ayan) % 360
         
-        # 7 Gezegen
+        # 7 Gezegen (Hata düzeltilmiş versiyon)
         gez_list = []
         ids = [(0, "Sun"), (1, "Moon"), (2, "Mars"), (3, "Merc"), (4, "Jupt"), (5, "Venu"), (6, "Satu")]
         
         for g_id, ad in ids:
-            pos, hiz = swe.calc_ut(jd, g_id, swe.FLG_SIDEREAL)
-            ekl = pos[0] % 360
-            gez_list.append({"ad": ad, "ekl": ekl, "deg_in_sign": ekl % 30, "retro": " (R)" if hiz[3] < 0 else ""})
+            # Sadece pozisyon ve hızı al, flags ekle (swe.FLG_SPEED)
+            res = swe.calc_ut(jd, g_id, swe.FLG_SIDEREAL | swe.FLG_SPEED)
+            ekl = res[0][0] % 360
+            hiz = res[0][3] # Hız verisi res[0]'ın 4. elemanıdır
+            retro = " (R)" if hiz < 0 else ""
+            gez_list.append({"ad": ad, "ekl": ekl, "deg_in_sign": ekl % 30, "retro": retro})
 
-        # Chara Karaka sıralaması
+        # Karaka
         sirali = sorted(gez_list, key=lambda x: x['deg_in_sign'], reverse=True)
         k_map = {sirali[i]['ad']: KARAKA_SIRALAMASI[i] for i in range(len(KARAKA_SIRALAMASI))}
 
         # Tablo Oluşturma
         h = f"{'Body':<15} {'Deg':<8} {'Nak':<10} {'P':<3} {'Rasi':<5} {'Navam':<5}"
-        out = [f"VEDIK HARITA: {sehir.upper()}", "="*55, h, "-"*55]
+        out = [f"VEDIK HARITA: {data.get('sehir','OSMANIYE').upper()}", "="*55, h, "-"*55]
         
         # Lagna
         nk, pd = nak_detay(l_ekl)
@@ -88,7 +78,8 @@ def harita_liste():
             out.append(f"{full_name:<15} {int(g['ekl']%30):02}°{int((g['ekl']%1)*60):02}' {nk:<10} {pd:<3} {BURC_KISA[int(g['ekl']/30)]:<5} {navamsa_hesapla(g['ekl']):<5}")
 
         # Rahu & Ketu
-        r_ekl = swe.calc_ut(jd, swe.TRUE_NODE, swe.FLG_SIDEREAL)[0][0] % 360
+        r_res = swe.calc_ut(jd, swe.TRUE_NODE, swe.FLG_SIDEREAL)
+        r_ekl = r_res[0][0] % 360
         for ad, e in [("Rahu", r_ekl), ("Ketu", (r_ekl+180)%360)]:
             nk, pd = nak_detay(e)
             out.append(f"{ad:<15} {int(e%30):02}°{int((e%1)*60):02}' {nk:<10} {pd:<3} {BURC_KISA[int(e/30)]:<5} {navamsa_hesapla(e):<5}")
@@ -96,7 +87,7 @@ def harita_liste():
         return "\n".join(out), 200, {"Content-Type": "text/plain; charset=utf-8"}
 
     except Exception as e:
-        return f"Hata Detayi: {str(e)}\n{traceback.format_exc()}", 200 # 500 yerine 200 döner ki hatayı görebilelim
+        return f"Hata: {str(e)}\n{traceback.format_exc()}", 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
