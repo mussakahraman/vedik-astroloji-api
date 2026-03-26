@@ -3,6 +3,7 @@ import swisseph as swe
 from datetime import datetime, timedelta
 from geopy.geocoders import Nominatim
 import traceback
+import os
 
 app = Flask(__name__)
 
@@ -345,7 +346,7 @@ def liste_olustur(veri, girdi):
 
 @app.route("/saglik", methods=["GET"])
 def saglik():
-    return jsonify({"durum": "aktif", "versiyon": "2.0"})
+    return jsonify({"durum": "aktif", "versiyon": "2.1"})
 
 @app.route("/debug", methods=["GET"])
 def debug():
@@ -358,7 +359,9 @@ def debug():
 @app.route("/harita", methods=["POST"])
 def harita_json():
     try:
-        data = request.json
+        data = request.get_json()
+        if not data:
+             return jsonify({"hata": "JSON verisi eksik"}), 400
         veri = hesapla(data["tarih"], data["saat"], data["sehir"], data.get("utc_offset", 3))
         return jsonify({"durum": "basarili", "girdi": data, **veri})
     except Exception as e:
@@ -367,7 +370,9 @@ def harita_json():
 @app.route("/harita/liste", methods=["POST"])
 def harita_liste():
     try:
-        data = request.json
+        data = request.get_json()
+        if not data:
+            return "HATA: JSON verisi eksik", 400
         veri = hesapla(data["tarih"], data["saat"], data["sehir"], data.get("utc_offset", 3))
         liste = liste_olustur(veri, data)
         return liste, 200, {"Content-Type": "text/plain; charset=utf-8"}
@@ -375,4 +380,5 @@ def harita_liste():
         return "HATA: " + str(e) + "\n\n" + traceback.format_exc(), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=False)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)
