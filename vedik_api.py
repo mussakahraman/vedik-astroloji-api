@@ -1,7 +1,5 @@
 from flask import Flask, request, jsonify
 import swisseph as swe
-from datetime import datetime, timedelta
-from geopy.geocoders import Nominatim
 import traceback
 import os
 
@@ -9,82 +7,86 @@ app = Flask(__name__)
 
 # --- SABİT VERİLER ---
 BURC_KISA = ["Ar", "Ta", "Ge", "Cn", "Le", "Vi", "Li", "Sc", "Sg", "Cp", "Aq", "Pi"]
-NAKSHATRALAR = ["Ashw", "Bhar", "Krit", "Rohi", "Mrig", "Ardr", "Puna", "Push", "Ashl", "Magh", "P_Ph", "U_Ph", "Hast", "Chit", "Swat", "Vish", "Anur", "Jyes", "Mula", "P_As", "U_As", "Shra", "Dhan", "Shat", "P_Bh", "U_Bh", "Reva"]
-# Karaka sıralaması: En yüksek derece AK, en düşük DK
-KARAKA_ADLARI = ["AK", "AmK", "BK", "MK", "PK", "GK", "DK"]
+NAK_LISTE = ["Ashw", "Bhar", "Krit", "Rohi", "Mrig", "Ardr", "Puna", "Push", "Ashl", "Magh", "P_Ph", "U_Ph", "Hast", "Chit", "Swat", "Vish", "Anur", "Jyes", "Mula", "P_As", "U_As", "Shra", "Dhan", "Shat", "P_Bh", "U_Bh", "Reva"]
+KARAKA_SIRALAMASI = ["AK", "AmK", "BK", "MK", "PK", "GK", "DK"]
 
-def get_navamsa(ekl):
+def navamsa_hesapla(ekl):
     ekl %= 360
-    r_no = int(ekl / 30)
-    nav_no = int((ekl % 30) / (30/9))
-    start_signs = [0, 9, 6, 3] # Ates, Toprak, Hava, Su baslangic burclari
-    return BURC_KISA[(start_signs[r_no % 4] + nav_no) % 12]
+    r_no, n_no = int(ekl / 30), int((ekl % 30) / (30/9))
+    offsets = [0, 9, 6, 3] 
+    return BURC_KISA[(offsets[r_no % 4] + n_no) % 12]
 
-def get_nak(ekl):
+def nak_detay(ekl):
     ekl %= 360
     n_no = int(ekl / (360/27))
     pada = int((ekl % (360/27)) / (360/108)) + 1
-    return NAKSHATRALAR[n_no], pada
+    return NAK_LISTE[min(n_no, 26)], pada
 
 @app.route("/saglik")
-def saglik(): return jsonify({"durum": "aktif"})
+def saglik(): return "Sistem Aktif"
 
 @app.route("/harita/liste", methods=["POST"])
 def harita_liste():
     try:
         data = request.get_json(force=True)
-        tarih, saat, sehir = data["tarih"], data["saat"], data["sehir"]
-        lat, lon = 37.07, 36.24 # Osmaniye default
+        # Format: "09.04.1993" ve "12:30"
+        t_str, s_str = data["tarih"], data["saat"]
+        utc = float(data.get("utc_offset", 3))
         
-        # Zaman hesaplama (Saniye dahil)
-        if len(saat.split(':')) == 2: saat += ":00"
-        dt = datetime.strptime(f"{tarih} {saat}", "%Y-%m-%d %H:%M:%S")
-        jd = swe.julday(dt.year, dt.month, dt.day, dt.hour + dt.minute/60.0 + dt.second/3600.0 - float(data.get("utc_offset", 3)))
+        # Parçalara ayır (Nokta veya Tire fark etmez)
+        t_p = t_str.replace('.', '-').split('-')
+        s_p = s_str.replace('.', ':').split(':')
         
+        d, m, y = int(t_p[0]), int(t_p[1]), int(t_p[2])
+        saat, dak = int(s_p[0]), int(s_p[1])
+
+        # Julian Day & Lahiri
+        jd = swe.julday(y, m, d, (saat + dak/60.0) - utc)
         swe.set_sid_mode(swe.SIDM_LAHIRI)
         ayan = swe.get_ayanamsa_ut(jd)
         
-        # Lagna
+        # Osmaniye Koordinat
+        lat, lon = 37.07, 36.24
         _, ascmc = swe.houses(jd, lat, lon, b'W')
         l_ekl = (ascmc[0] - ayan) % 360
-        l_nak, l_pada = get_nak(l_ekl)
         
-        gez_verileri = []
-        ids = [(0,"Sun"), (1,"Moon"), (2,"Mars"), (3,"Mercury"), (4,"Jupiter"), (5,"Venus"), (6,"Saturn")]
+        # 7 Gezegen
+        gez_list = []
+        ids = [(0, "Sun"), (1, "Moon"), (2, "Mars"), (3, "Merc"), (4, "Jupt"), (5, "Venu"), (6, "Satu")]
         
         for g_id, ad in ids:
             pos, hiz = swe.calc_ut(jd, g_id, swe.FLG_SIDEREAL)
             ekl = pos[0] % 360
-            retro = " (R)" if hiz[3] < 0 else ""
-            gez_verileri.append({"ad": ad + retro, "ekl": ekl, "deg_in_sign": ekl % 30})
+            gez_list.append({"ad": ad, "ekl": ekl, "deg_in_sign": ekl % 30, "retro": " (R)" if hiz[3] < 0 else ""})
 
-        # Karaka Hesapla (7 Gezegen)
-        sirali = sorted(gez_verileri, key=lambda x: x['deg_in_sign'], reverse=True)
-        karaka_map = {sirali[i]['ad']: KARAKA_ADLARI[i] for i in range(len(KARAKA_ADLARI))}
+        # Karaka
+        sirali = sorted(gez_list, key=lambda x: x['deg_in_sign'], reverse=True)
+        k_map = {sirali[i]['ad']: KARAKA_SIRALAMASI[i] for i in range(len(KARAKA_SIRALAMASI))}
 
-        # Tabloyu Oluştur
-        lines = [f"{'Body':<15} {'Longitude':<15} {'Nakshatra':<12} {'Pada':<5} {'Rasi':<5} {'Navamsa':<5}", "-"*70]
+        # Tablo
+        h = f"{'Body':<15} {'Deg':<8} {'Nak':<10} {'P':<3} {'Rasi':<5} {'Navam':<5}"
+        out = [f"VEDIK HARITA: {data.get('sehir','').upper()}", "="*50, h, "-"*50]
         
-        # Lagna Satırı
-        lines.append(f"{'Lagna':<15} {int(l_ekl%30):02} {BURC_KISA[int(l_ekl/30)]} {int((l_ekl%1)*60):02}' {l_nak:<12} {l_pada:<5} {BURC_KISA[int(l_ekl/30)]:<5} {get_navamsa(l_ekl):<5}")
+        # Lagna
+        nk, pd = nak_detay(l_ekl)
+        out.append(f"{'Lagna':<15} {int(l_ekl%30):02}°{int((l_ekl%1)*60):02}' {nk:<10} {pd:<3} {BURC_KISA[int(l_ekl/30)]:<5} {navamsa_hesapla(l_ekl):<5}")
         
-        # Gezegen Satırları
-        for g in gez_verileri:
-            nak, pada = get_nak(g['ekl'])
-            k_ad = karaka_map.get(g['ad'], "")
-            name_str = f"{g['ad']} - {k_ad}" if k_ad else g['ad']
-            deg, sign_idx = int(g['ekl'] % 30), int(g['ekl'] / 30)
-            lines.append(f"{name_str:<15} {deg:02} {BURC_KISA[sign_idx]} {int((g['ekl']%1)*60):02}' {nak:<12} {pada:<5} {BURC_KISA[sign_idx]:<5} {get_navamsa(g['ekl']):<5}")
+        for g in gez_list:
+            nk, pd = nak_detay(g['ekl'])
+            tag = k_map.get(g['ad'], "")
+            nm = f"{g['ad']}{g['retro']} - {tag}" if tag else g['ad']
+            out.append(f"{nm:<15} {int(g['ekl']%30):02}°{int((g['ekl']%1)*60):02}' {nk:<10} {pd:<3} {BURC_KISA[int(g['ekl']/30)]:<5} {navamsa_hesapla(g['ekl']):<5}")
 
-        # Rahu & Ketu (Karakasız)
-        r_pos, _ = swe.calc_ut(jd, swe.TRUE_NODE, swe.FLG_SIDEREAL)
-        for ad, e in [("Rahu", r_pos[0]%30), ("Ketu", (r_pos[0]+180)%360)]:
-            n, p = get_nak(e)
-            lines.append(f"{ad:<15} {int(e%30):02} {BURC_KISA[int(e/30)]} {int((e%1)*60):02}' {n:<12} {p:<5} {BURC_KISA[int(e/30)]:<5} {get_navamsa(e):<5}")
+        # Rahu/Ketu
+        r_ekl = swe.calc_ut(jd, swe.TRUE_NODE, swe.FLG_SIDEREAL)[0][0] % 360
+        for ad, e in [("Rahu", r_ekl), ("Ketu", (r_ekl+180)%360)]:
+            nk, pd = nak_detay(e)
+            out.append(f"{ad:<15} {int(e%30):02}°{int((e%1)*60):02}' {nk:<10} {pd:<3} {BURC_KISA[int(e/30)]:<5} {navamsa_hesapla(e):<5}")
 
-        return "\n".join(lines), 200, {"Content-Type": "text/plain; charset=utf-8"}
-    except Exception as e:
-        return str(e), 500
+        return "\n".join(out), 200, {"Content-Type": "text/plain; charset=utf-8"}
+
+    except Exception:
+        return traceback.format_exc(), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
